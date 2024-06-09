@@ -47,7 +47,14 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
+
         const sessionCollection = client.db('ThinkSyncDB').collection('StudySession')
+        const userCollection = client.db('ThinkSyncDB').collection('users')
+
+
+
+
+
         // auth related api
         app.post('/jwt', async (req, res) => {
             const user = req.body
@@ -63,6 +70,7 @@ async function run() {
                 .send({ success: true })
         })
         // Logout
+
         app.get('/logout', async (req, res) => {
             try {
                 res
@@ -76,6 +84,14 @@ async function run() {
             } catch (err) {
                 res.status(500).send(err)
             }
+        })
+
+        // User information add to the database
+
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            const result = await userCollection.insertOne(user);
+            res.send(result)
         })
 
         // get sessions data from db

@@ -137,6 +137,20 @@ async function run() {
             res.send(result)
         })
 
+        // Set the user role to student
+
+        app.patch('/users/student/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const updatedDoc = {
+                $set: {
+                    role: 'Student'
+                }
+            }
+            const result = await userCollection.updateOne(filter, updatedDoc)
+            res.send(result)
+        })
+
         // delete a user
 
         app.delete('/users/:id', async (req, res) => {

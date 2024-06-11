@@ -180,12 +180,17 @@ async function run() {
         })
 
         // post new sessions data in db
-
         app.post('/sessions', async (req, res) => {
-            const session = req.body
-            console.log(session)
-            const result = await sessionCollection.insertOne(session)
-        })
+            try {
+                const session = req.body;
+                console.log(session);
+                const result = await sessionCollection.insertOne(session);
+                res.status(201).send({ insertedId: result.insertedId });
+            } catch (error) {
+                console.error('Error adding session:', error);
+                res.status(500).send({ message: 'Failed to add session' });
+            }
+        });
 
         // get single sesssion from db using its _id
         app.get('/sessions/:id', async (req, res) => {

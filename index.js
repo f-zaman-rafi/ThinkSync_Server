@@ -69,6 +69,7 @@ async function run() {
                 })
                 .send({ success: true })
         })
+
         // Logout
 
         app.get('/logout', async (req, res) => {
@@ -108,6 +109,17 @@ async function run() {
             res.send(result)
         })
 
+        // get specific user
+
+        app.get('/user', async (req, res) => {
+            console.log(req.query.email);
+            let query = {};
+            if (req.query?.email) {
+                query = { email: req.query.email }
+            }
+            const result = await userCollection.find(query).toArray();
+            res.send(result)
+        })
 
         // update a user role to admin
 
@@ -165,6 +177,14 @@ async function run() {
             const result = await sessionCollection.find().toArray();
             res.send(result)
 
+        })
+
+        // post new sessions data in db
+
+        app.post('/sessions', async (req, res) => {
+            const session = req.body
+            console.log(session)
+            const result = await sessionCollection.insertOne(session)
         })
 
         // get single sesssion from db using its _id

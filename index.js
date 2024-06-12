@@ -247,7 +247,22 @@ async function run() {
             res.send(result)
         })
 
+        // Request to approve for rejected sessions
+
+        app.patch('/sessions/pending/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const updatedDoc = {
+                $set: {
+                    Status: 'Pending'
+                }
+            }
+            const result = await sessionCollection.updateOne(filter, updatedDoc)
+            res.send(result)
+        })
+
         // get approved data
+
         app.get('/session/approved', async (req, res) => {
             let query = {};
             if (req.query?.status) {

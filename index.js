@@ -241,6 +241,37 @@ async function run() {
             }
         });
 
+        // Edit Approved Session by Admin
+
+        app.patch('/sessions/approve/:id', async (req, res) => {
+            const id = req.params.id;
+            const { fee, description, Registration_Start, Registration_End, Class_Start, Class_End, duration, Status } = req.body;
+            const filter = { _id: new ObjectId(id) };
+            const updatedFields = {
+                $set: {
+                    Status: Status,
+                    Fee: fee,
+                    description: description,
+                    Registration_Start: Registration_Start,
+                    Registration_End: Registration_End,
+                    Class_Start: Class_Start,
+                    Class_End: Class_End,
+                    duration: duration,
+
+                }
+            };
+
+            try {
+                const result = await YourModelNameHere.updateOne(filter, updatedFields);
+                // Handle response or send success message
+                res.send("Session Edited successfully");
+            } catch (error) {
+                // Handle error
+                console.error("Error occurred while updating session:", error);
+                res.status(500).send("Internal server error");
+            }
+        });
+
 
         // Reject session by admin
 

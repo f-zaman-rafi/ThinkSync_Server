@@ -223,15 +223,24 @@ async function run() {
 
         app.patch('/sessions/approve/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = { _id: new ObjectId(id) }
-            const updatedDoc = {
+            const { fee } = req.body; // Assuming the fee is passed in the request body
+            const filter = { _id: new ObjectId(id) };
+            const updatedFields = {
                 $set: {
-                    Status: 'Approved'
+                    Status: 'Approved',
+                    Fee: fee // Include the Fee field in the $set operation
                 }
+            };
+
+            try {
+                const result = await sessionCollection.updateOne(filter, updatedFields);
+                res.send(result);
+            } catch (error) {
+                // Handle error
+                res.status(500).send("Error occurred while updating session.");
             }
-            const result = await sessionCollection.updateOne(filter, updatedDoc)
-            res.send(result)
-        })
+        });
+
 
         // Reject session by admin
 
@@ -246,6 +255,16 @@ async function run() {
             const result = await sessionCollection.updateOne(filter, updatedDoc)
             res.send(result)
         })
+
+        // Delete Session by admin 
+
+        app.delete('/sessions/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await sessionCollection.deleteOne(query);
+            res.send(result);
+        })
+
 
         // Request to approve for rejected sessions
 

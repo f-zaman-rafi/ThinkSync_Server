@@ -176,6 +176,7 @@ async function run() {
         })
 
         // get sessions data from db
+
         app.get('/sessions', async (req, res) => {
             const result = await sessionCollection.find().toArray();
             res.send(result)
@@ -196,6 +197,7 @@ async function run() {
         });
 
         // get single sesssion from db using its _id
+
         app.get('/sessions/:id', async (req, res) => {
             const id = req.params.id
             const query = { _id: new ObjectId(id) }
@@ -217,17 +219,45 @@ async function run() {
         })
 
 
+        // approve session by admin
+
+        app.patch('/sessions/approve/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const updatedDoc = {
+                $set: {
+                    Status: 'Approved'
+                }
+            }
+            const result = await sessionCollection.updateOne(filter, updatedDoc)
+            res.send(result)
+        })
+
+        // Reject session by admin
+
+        app.patch('/sessions/reject/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const updatedDoc = {
+                $set: {
+                    Status: 'Rejected'
+                }
+            }
+            const result = await sessionCollection.updateOne(filter, updatedDoc)
+            res.send(result)
+        })
+
+        // get approved data
+        app.get('/session/approved', async (req, res) => {
+            let query = {};
+            if (req.query?.status) {
+                query = { Status: req.query.status }
+            }
+            const result = await sessionCollection.find(query).toArray();
+            res.send(result);
+        })
 
 
-        // app.get('/user', async (req, res) => {
-        //     console.log(req.query.email);
-        //     let query = {};
-        //     if (req.query?.email) {
-        //         query = { email: req.query.email }
-        //     }
-        //     const result = await userCollection.find(query).toArray();
-        //     res.send(result)
-        // })
 
 
         // Send a ping to confirm a successful connection

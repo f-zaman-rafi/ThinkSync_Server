@@ -87,6 +87,9 @@ async function run() {
             }
         })
 
+
+
+
         // User information add to the database
 
         app.post('/users', async (req, res) => {
@@ -200,26 +203,32 @@ async function run() {
             res.send(result)
         })
 
+        // get sessions data by tutor email
+
+        app.get('/session', async (req, res) => {
+            console.log(req.query.email);
+            let query = {};
+            if (req.query?.email) {
+                query = { email: req.query.email }
+
+            }
+            const result = await sessionCollection.find(query).toArray();
+            res.send(result);
+        })
 
 
 
-        // Get all rooms from db
-        // app.get('/rooms', async (req, res) => {
-        //     const category = req.query.category
-        //     console.log(category)
-        //     let query = {}
-        //     if (category && category !== 'null') query = { category }
-        //     const result = await roomsCollection.find(query).toArray()
+
+        // app.get('/user', async (req, res) => {
+        //     console.log(req.query.email);
+        //     let query = {};
+        //     if (req.query?.email) {
+        //         query = { email: req.query.email }
+        //     }
+        //     const result = await userCollection.find(query).toArray();
         //     res.send(result)
         // })
 
-        // Get a single room data from db using _id
-        // app.get('/room/:id', async (req, res) => {
-        //     const id = req.params.id
-        //     const query = { _id: new ObjectId(id) }
-        //     const result = await roomsCollection.findOne(query)
-        //     res.send(result)
-        // })
 
         // Send a ping to confirm a successful connection
         await client.db('admin').command({ ping: 1 })

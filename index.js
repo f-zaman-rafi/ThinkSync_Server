@@ -243,14 +243,14 @@ async function run() {
 
         // Edit Approved Session by Admin
 
-        app.patch('/sessions/approve/:id', async (req, res) => {
+
+        app.patch('/sessions/edited/:id', async (req, res) => {
             const id = req.params.id;
-            const { fee, description, Registration_Start, Registration_End, Class_Start, Class_End, duration, Status } = req.body;
+            const { Fee, description, Registration_Start, Registration_End, Class_Start, Class_End, duration } = req.body;
             const filter = { _id: new ObjectId(id) };
             const updatedFields = {
                 $set: {
-                    Status: Status,
-                    Fee: fee,
+                    Fee: Fee,
                     description: description,
                     Registration_Start: Registration_Start,
                     Registration_End: Registration_End,
@@ -262,7 +262,7 @@ async function run() {
             };
 
             try {
-                const result = await YourModelNameHere.updateOne(filter, updatedFields);
+                const result = await sessionCollection.updateOne(filter, updatedFields);
                 // Handle response or send success message
                 res.send("Session Edited successfully");
             } catch (error) {
@@ -337,9 +337,9 @@ async function run() {
 run().catch(console.dir)
 
 app.get('/', (req, res) => {
-    res.send('Hello from StayVista Server..')
+    res.send('Hello from studySync Server..')
 })
 
 app.listen(port, () => {
-    console.log(`StayVista is running on port ${port}`)
+    console.log(`studySync is running on port ${port}`)
 })

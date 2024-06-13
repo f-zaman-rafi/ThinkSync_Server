@@ -50,6 +50,7 @@ async function run() {
 
         const sessionCollection = client.db('ThinkSyncDB').collection('StudySession')
         const userCollection = client.db('ThinkSyncDB').collection('users')
+        const materialsCollection = client.db('ThinkSyncDB').collection('materials')
 
 
 
@@ -322,6 +323,26 @@ async function run() {
             res.send(result);
         })
 
+        // post a session material
+
+        app.post('/materials', async (req, res) => {
+            const material = req.body;
+            const result = await materialsCollection.insertOne(material)
+            res.send(result)
+        })
+
+
+        // app.post('/sessions', async (req, res) => {
+        //     try {
+        //         const session = req.body;
+        //         console.log(session);
+        //         const result = await sessionCollection.insertOne(session);
+        //         res.status(201).send({ insertedId: result.insertedId });
+        //     } catch (error) {
+        //         console.error('Error adding session:', error);
+        //         res.status(500).send({ message: 'Failed to add session' });
+        //     }
+        // });
 
 
 

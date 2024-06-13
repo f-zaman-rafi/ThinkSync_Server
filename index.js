@@ -331,18 +331,51 @@ async function run() {
             res.send(result)
         })
 
+        // get material by tutor
 
-        // app.post('/sessions', async (req, res) => {
-        //     try {
-        //         const session = req.body;
-        //         console.log(session);
-        //         const result = await sessionCollection.insertOne(session);
-        //         res.status(201).send({ insertedId: result.insertedId });
-        //     } catch (error) {
-        //         console.error('Error adding session:', error);
-        //         res.status(500).send({ message: 'Failed to add session' });
-        //     }
-        // });
+        app.get('/materials', async (req, res) => {
+            console.log(req.query.email);
+            let query = {};
+            if (req.query?.email) {
+                query = { email: req.query.email }
+
+            }
+            const result = await materialsCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        // get materials by id
+
+        app.get('/materials/:id', async (req, res) => {
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const result = await materialsCollection.findOne(query)
+            res.send(result)
+        })
+
+        // update materials by id
+
+        app.patch('/materials/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = { _id: new ObjectId(id) };
+
+                // Assuming req.body contains the updated fields
+                const updatedMaterial = req.body;
+
+                const result = await materialsCollection.updateOne(query, { $set: updatedMaterial });
+
+                if (result.matchedCount === 0) {
+                    return res.status(404).json({ error: 'Material not found' });
+                }
+
+                res.json({ updatedId: id }); // Respond with the updated ID or any other success message
+
+            } catch (error) {
+                console.error('Error updating material:', error);
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
 
 
 

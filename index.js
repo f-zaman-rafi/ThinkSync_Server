@@ -353,6 +353,13 @@ async function run() {
             res.send(result)
         })
 
+        // get all materials data from db
+
+        app.get('/materials', async (req, res) => {
+            const result = await materialsCollection.find().toArray()
+            res.send(result);
+        })
+
         // update materials by id
 
         app.patch('/materials/:id', async (req, res) => {

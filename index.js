@@ -51,6 +51,7 @@ async function run() {
         const sessionCollection = client.db('ThinkSyncDB').collection('StudySession')
         const userCollection = client.db('ThinkSyncDB').collection('users')
         const materialsCollection = client.db('ThinkSyncDB').collection('materials')
+        const bookedSessionCollection = client.db('ThinkSyncDB').collection('bookedSessions')
 
 
 
@@ -105,6 +106,14 @@ async function run() {
             const result = await userCollection.insertOne(user);
             res.send(result)
         })
+
+        // add student booked data to database
+        app.post('/booked', async (req, res) => {
+            const booking = req.body;
+            const result = await bookedSessionCollection.insertOne(booking)
+            res.send(result);
+        })
+
 
         // get all users
 
@@ -380,6 +389,39 @@ async function run() {
 
             } catch (error) {
                 console.error('Error updating material:', error);
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+
+
+        // delete a material
+
+        app.delete('/materials/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await materialsCollection.deleteOne(query);
+            res.send(result);
+        })
+
+        // Endpoint to search users by name or email
+
+        app.get('/users/search', async (req, res) => {
+            const { name, email } = req.query;
+            const userCollection = client.db('ThinkSyncDB').collection('users');
+
+            try {
+                let query = {};
+                if (name) {
+                    query.name = { $regex: new RegExp(name, 'i') };
+                }
+                if (email) {
+                    query.email = { $regex: new RegExp(email, 'i') };
+                }
+
+                const users = await userCollection.find(query).toArray();
+                res.json(users);
+            } catch (err) {
+                console.error('Error searching users:', err);
                 res.status(500).json({ error: 'Internal server error' });
             }
         });

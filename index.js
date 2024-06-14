@@ -108,11 +108,59 @@ async function run() {
         })
 
         // add student booked data to database
+
         app.post('/booked', async (req, res) => {
-            const booking = req.body;
-            const result = await bookedSessionCollection.insertOne(booking)
-            res.send(result);
-        })
+            const { session_id, email, title, name, averageRating, description, Registration_Start, Registration_End, Class_Start, Class_End, duration, Fee } = req.body;
+
+            try {
+                // Check if the session is already booked by the user
+                const existingBooking = await bookedSessionCollection.findOne({ session_id, email });
+                if (existingBooking) {
+                    return res.status(400).json({ error: 'Session already booked by the user' });
+                }
+
+                // Create a new booking object with relevant session details
+                const newBooking = {
+                    session_id,
+                    email,
+                    title,
+                    name,
+                    averageRating,
+                    description,
+                    Registration_Start,
+                    Registration_End,
+                    Class_Start,
+                    Class_End,
+                    duration,
+                    Fee
+                };
+
+                // Insert the new booking into the bookedSessionCollection
+                const result = await bookedSessionCollection.insertOne(newBooking);
+
+                res.status(201).json({ message: 'Booking successful', insertedId: result.insertedId });
+            } catch (error) {
+                console.error('Error booking session:', error);
+                res.status(500).json({ error: 'Failed to book session' });
+            }
+        });
+
+
+        // Get booked sessions by user email
+        app.get('/booked-sessions', async (req, res) => {
+            const { email } = req.query;
+
+            try {
+                const query = { email };
+                const bookedSessions = await bookedSessionCollection.find(query).toArray();
+
+                res.json(bookedSessions);
+            } catch (error) {
+                console.error('Error fetching booked sessions:', error);
+                res.status(500).json({ error: 'Failed to fetch booked sessions' });
+            }
+        });
+
 
 
         // get all users

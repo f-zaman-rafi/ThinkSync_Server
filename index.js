@@ -52,6 +52,7 @@ async function run() {
         const userCollection = client.db('ThinkSyncDB').collection('users')
         const materialsCollection = client.db('ThinkSyncDB').collection('materials')
         const bookedSessionCollection = client.db('ThinkSyncDB').collection('bookedSessions')
+        const noteCollection = client.db('ThinkSyncDB').collection('notes')
 
 
 
@@ -473,6 +474,31 @@ async function run() {
                 res.status(500).json({ error: 'Internal server error' });
             }
         });
+
+        // personal notes post
+        app.post('/note', async (req, res) => {
+            const note = req.body;
+            const result = await noteCollection.insertOne(note)
+            res.send(result)
+        })
+
+        // get personal notes
+        app.get('/note/', async (req, res) => {
+            console.log(req.query.email);
+            let query = {};
+            if (req.query?.email) {
+                query = { email: req.query.email }
+            }
+            try {
+                const result = await noteCollection.find(query).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching notes:', error);
+                res.status(500).json({ error: 'Failed to fetch notes' });
+            }
+        });
+
+
 
 
 

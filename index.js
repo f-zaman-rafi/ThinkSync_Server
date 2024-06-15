@@ -53,6 +53,7 @@ async function run() {
         const materialsCollection = client.db('ThinkSyncDB').collection('materials')
         const bookedSessionCollection = client.db('ThinkSyncDB').collection('bookedSessions')
         const noteCollection = client.db('ThinkSyncDB').collection('notes')
+        const reviewCollection = client.db('ThinkSyncDB').collection('review')
 
 
 
@@ -498,8 +499,70 @@ async function run() {
             }
         });
 
+        // delete personal notes
 
+        app.delete('/note/:id', async (req, res) => {
+            const id = req.params.id;
+            try {
+                const result = await noteCollection.deleteOne({ _id: new ObjectId(id) });
+                if (result.deletedCount === 1) {
+                    res.json({ success: true, message: 'Note deleted successfully' });
+                } else {
+                    res.status(404).json({ success: false, message: 'Note not found' });
+                }
+            } catch (error) {
+                console.error('Error deleting note:', error);
+                res.status(500).json({ success: false, error: 'Failed to delete note' });
+            }
+        });
 
+        // update notes
+        app.patch('/note/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = { _id: new ObjectId(id) };
+
+                // Assuming req.body contains the updated fields
+                const updatedNote = req.body;
+
+                const result = await noteCollection.updateOne(query, { $set: updatedNote });
+
+                if (result.matchedCount === 0) {
+                    return res.status(404).json({ error: 'Note not found' });
+                }
+
+                res.json({ updatedId: id }); // Respond with the updated ID or any other success message
+
+            } catch (error) {
+                console.error('Error updating note:', error);
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+
+        app.get('/note/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = { _id: new ObjectId(id) };
+
+                const note = await noteCollection.findOne(query);
+
+                if (!note) {
+                    return res.status(404).json({ error: 'Note not found' });
+                }
+
+                res.json(note);
+
+            } catch (error) {
+                console.error('Error fetching note:', error);
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+
+        app.post('/review', async (req, res) => {
+            const review = req.body
+            const result = await reviewCollection.insertOne(review)
+            res.send(result)
+        })
 
 
         // Send a ping to confirm a successful connection

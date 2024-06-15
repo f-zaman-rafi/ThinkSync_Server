@@ -558,12 +558,19 @@ async function run() {
             }
         });
 
+        // post review api
+
         app.post('/review', async (req, res) => {
             const review = req.body
             const result = await reviewCollection.insertOne(review)
             res.send(result)
         })
 
+        // get review api
+        app.get('/review', async (req, res) => {
+            const result = await reviewCollection.find().toArray()
+            res.send(result)
+        })
 
         // Send a ping to confirm a successful connection
         await client.db('admin').command({ ping: 1 })

@@ -573,6 +573,34 @@ async function run() {
             res.send(result)
         })
 
+        // Payment route
+        app.post('/create-payment-intent', async (req, res) => {
+            const { fee } = req.body;
+
+            if (!fee || isNaN(parseFloat(fee))) {
+                return res.status(400).json({ error: 'Valid fee amount is required' });
+            }
+
+            const amount = parseInt(fee * 100);
+
+            try {
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: amount,
+                    currency: "usd",
+                    payment_method_types: ['card'],
+                });
+
+                res.json({
+                    clientSecret: paymentIntent.client_secret
+                });
+            } catch (error) {
+                console.error("Error creating payment intent:", error);
+                res.status(500).json({ error: 'Failed to create payment intent' });
+            }
+        });
+
+
+
         // Send a ping to confirm a successful connection
         await client.db('admin').command({ ping: 1 })
         console.log(

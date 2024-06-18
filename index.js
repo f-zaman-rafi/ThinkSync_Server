@@ -11,7 +11,7 @@ const port = process.env.PORT || 8000;
 
 // Middleware configuration
 const corsOptions = {
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'https://thinksynccc.web.app'],
     credentials: true,
     optionSuccessStatus: 200,
 };
@@ -21,7 +21,11 @@ app.use(cookieParser());
 
 // Verify Token Middleware
 const verifyToken = (req, res, next) => {
-    const token = req.cookies?.token;
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).send({ message: 'Unauthorized access' });
+    }
+    const token = authHeader.split(' ')[1];
     if (!token) {
         return res.status(401).send({ message: 'Unauthorized access' });
     }
@@ -35,6 +39,7 @@ const verifyToken = (req, res, next) => {
     });
 };
 
+
 // MongoDB connection URI
 const uri = `mongodb://${process.env.DB_USER}:${process.env.DB_PASS}@ac-esohqc9-shard-00-00.okia5sv.mongodb.net:27017,ac-esohqc9-shard-00-01.okia5sv.mongodb.net:27017,ac-esohqc9-shard-00-02.okia5sv.mongodb.net:27017/?ssl=true&replicaSet=atlas-mrsszx-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0`;
 const client = new MongoClient(uri, {
@@ -47,7 +52,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
-        await client.connect();
+        // await client.connect();
 
         const db = client.db('ThinkSyncDB');
         const sessionCollection = db.collection('StudySession');
@@ -63,12 +68,9 @@ async function run() {
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
                 expiresIn: '365d',
             });
-            res.cookie('token', token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-            }).send({ success: true });
+            res.send({ success: true, token });
         });
+
 
         // Logout
         app.get('/logout', (req, res) => {
@@ -490,7 +492,10 @@ async function run() {
             if (email) query.email = { $regex: new RegExp(email, 'i') };
 
             try {
+
                 const users = await userCollection.find(query).toArray();
+
+
                 res.json(users);
             } catch (error) {
                 console.error('Error searching users:', error);
@@ -630,10 +635,10 @@ async function run() {
 
 
         // Send a ping to confirm a successful connection
-        await client.db('admin').command({ ping: 1 })
-        console.log(
-            'Pinged your deployment. You successfully connected to MongoDB!'
-        )
+        // await client.db('admin').command({ ping: 1 })
+        // console.log(
+        //     'Pinged your deployment. You successfully connected to MongoDB!'
+        // )
     } finally {
         // Ensures that the client will close when you finish/error
     }

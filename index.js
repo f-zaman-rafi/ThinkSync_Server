@@ -1,117 +1,109 @@
-const express = require('express')
-const app = express()
-require('dotenv').config()
-const cors = require('cors')
-const cookieParser = require('cookie-parser')
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
-const jwt = require('jsonwebtoken')
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
+const express = require('express');
+const app = express();
+require('dotenv').config();
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const jwt = require('jsonwebtoken');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-const port = process.env.PORT || 8000
+const port = process.env.PORT || 8000;
 
-// middleware
+// Middleware configuration
 const corsOptions = {
     origin: ['http://localhost:5173', 'http://localhost:5174'],
     credentials: true,
     optionSuccessStatus: 200,
-}
-app.use(cors(corsOptions))
-
-app.use(express.json())
-app.use(cookieParser())
+};
+app.use(cors(corsOptions));
+app.use(express.json());
+app.use(cookieParser());
 
 // Verify Token Middleware
-const verifyToken = async (req, res, next) => {
-    const token = req.cookies?.token
-    console.log(token)
+const verifyToken = (req, res, next) => {
+    const token = req.cookies?.token;
     if (!token) {
-        return res.status(401).send({ message: 'unauthorized access' })
+        return res.status(401).send({ message: 'Unauthorized access' });
     }
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
         if (err) {
-            console.log(err)
-            return res.status(401).send({ message: 'unauthorized access' })
+            console.error(err);
+            return res.status(401).send({ message: 'Unauthorized access' });
         }
-        req.user = decoded
-        next()
-    })
-}
+        req.user = decoded;
+        next();
+    });
+};
 
-const uri = `mongodb://${process.env.DB_USER}:${process.env.DB_PASS}@ac-esohqc9-shard-00-00.okia5sv.mongodb.net:27017,ac-esohqc9-shard-00-01.okia5sv.mongodb.net:27017,ac-esohqc9-shard-00-02.okia5sv.mongodb.net:27017/?ssl=true&replicaSet=atlas-mrsszx-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0`
+// MongoDB connection URI
+const uri = `mongodb://${process.env.DB_USER}:${process.env.DB_PASS}@ac-esohqc9-shard-00-00.okia5sv.mongodb.net:27017,ac-esohqc9-shard-00-01.okia5sv.mongodb.net:27017,ac-esohqc9-shard-00-02.okia5sv.mongodb.net:27017/?ssl=true&replicaSet=atlas-mrsszx-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0`;
 const client = new MongoClient(uri, {
     serverApi: {
         version: ServerApiVersion.v1,
         strict: true,
         deprecationErrors: true,
     },
-})
+});
 
 async function run() {
     try {
+        await client.connect();
 
-        const sessionCollection = client.db('ThinkSyncDB').collection('StudySession')
-        const userCollection = client.db('ThinkSyncDB').collection('users')
-        const materialsCollection = client.db('ThinkSyncDB').collection('materials')
-        const bookedSessionCollection = client.db('ThinkSyncDB').collection('bookedSessions')
-        const noteCollection = client.db('ThinkSyncDB').collection('notes')
-        const reviewCollection = client.db('ThinkSyncDB').collection('review')
+        const db = client.db('ThinkSyncDB');
+        const sessionCollection = db.collection('StudySession');
+        const userCollection = db.collection('users');
+        const materialsCollection = db.collection('materials');
+        const bookedSessionCollection = db.collection('bookedSessions');
+        const noteCollection = db.collection('notes');
+        const reviewCollection = db.collection('review');
 
-
-
-
-
-        // auth related api
+        // Auth related API
         app.post('/jwt', async (req, res) => {
-            const user = req.body
+            const user = req.body;
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
                 expiresIn: '365d',
-            })
-            res
-                .cookie('token', token, {
-                    httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
-                    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-                })
-                .send({ success: true })
-        })
+            });
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+            }).send({ success: true });
+        });
 
         // Logout
-
-        app.get('/logout', async (req, res) => {
+        app.get('/logout', (req, res) => {
             try {
-                res
-                    .clearCookie('token', {
-                        maxAge: 0,
-                        secure: process.env.NODE_ENV === 'production',
-                        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-                    })
-                    .send({ success: true })
-                console.log('Logout successful')
+                res.clearCookie('token', {
+                    maxAge: 0,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+                }).send({ success: true });
+                console.log('Logout successful');
             } catch (err) {
-                res.status(500).send(err)
+                console.error('Logout error:', err);
+                res.status(500).send(err);
             }
-        })
-
-
-
+        });
 
         // User information add to the database
-
         app.post('/users', async (req, res) => {
             const user = req.body;
 
-            const query = { email: user.email }
-            const existingUser = await userCollection.findOne(query);
-            if (existingUser) {
-                return res.send({ message: 'user already exists', insertedId: null })
+            try {
+                const existingUser = await userCollection.findOne({ email: user.email });
+                if (existingUser) {
+                    return res.send({ message: 'User already exists', insertedId: null });
+                }
+
+                const result = await userCollection.insertOne(user);
+                res.send(result);
+            } catch (error) {
+                console.error('Error adding user:', error);
+                res.status(500).json({ error: 'Failed to add user' });
             }
+        });
 
-            const result = await userCollection.insertOne(user);
-            res.send(result)
-        })
-
-        // add student booked data to database
-
+        // Add student booked data to the database
         app.post('/booked', async (req, res) => {
             const { session_id, email, title, name, averageRating, description, Registration_Start, Registration_End, Class_Start, Class_End, duration, Fee } = req.body;
 
@@ -122,7 +114,6 @@ async function run() {
                     return res.status(400).json({ error: 'Session already booked by the user' });
                 }
 
-                // Create a new booking object with relevant session details
                 const newBooking = {
                     session_id,
                     email,
@@ -135,12 +126,10 @@ async function run() {
                     Class_Start,
                     Class_End,
                     duration,
-                    Fee
+                    Fee,
                 };
 
-                // Insert the new booking into the bookedSessionCollection
                 const result = await bookedSessionCollection.insertOne(newBooking);
-
                 res.status(201).json({ message: 'Booking successful', insertedId: result.insertedId });
             } catch (error) {
                 console.error('Error booking session:', error);
@@ -148,15 +137,12 @@ async function run() {
             }
         });
 
-
         // Get booked sessions by user email
         app.get('/booked-sessions', async (req, res) => {
             const { email } = req.query;
 
             try {
-                const query = { email };
-                const bookedSessions = await bookedSessionCollection.find(query).toArray();
-
+                const bookedSessions = await bookedSessionCollection.find({ email }).toArray();
                 res.json(bookedSessions);
             } catch (error) {
                 console.error('Error fetching booked sessions:', error);
@@ -164,91 +150,107 @@ async function run() {
             }
         });
 
-
-
-        // get all users
-
+        // Get all users
         app.get('/users', async (req, res) => {
-            const result = await userCollection.find().toArray();
-            res.send(result)
-        })
-
-        // get specific user
-
-        app.get('/user', async (req, res) => {
-            console.log(req.query.email);
-            let query = {};
-            if (req.query?.email) {
-                query = { email: req.query.email }
+            try {
+                const users = await userCollection.find().toArray();
+                res.send(users);
+            } catch (error) {
+                console.error('Error fetching users:', error);
+                res.status(500).json({ error: 'Failed to fetch users' });
             }
-            const result = await userCollection.find(query).toArray();
-            res.send(result)
-        })
+        });
 
-        // update a user role to admin
+        // Get specific user by email
+        app.get('/user', async (req, res) => {
+            const { email } = req.query;
 
+            try {
+                const user = await userCollection.find({ email }).toArray();
+                res.send(user);
+            } catch (error) {
+                console.error('Error fetching user:', error);
+                res.status(500).json({ error: 'Failed to fetch user' });
+            }
+        });
+
+        // Update a user role to admin
         app.patch('/users/admin/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = { _id: new ObjectId(id) };
-            const updatedDoc = {
-                $set: {
-                    role: 'Admin'
-                }
+
+            try {
+                const result = await userCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { role: 'Admin' } }
+                );
+                res.send(result);
+            } catch (error) {
+                console.error('Error updating user to admin:', error);
+                res.status(500).json({ error: 'Failed to update user role to admin' });
             }
-            const result = await userCollection.updateOne(filter, updatedDoc)
-            res.send(result);
-        })
+        });
 
-        // user role as a tutor\
-
+        // Update a user role to tutor
         app.patch('/users/tutor/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = { _id: new ObjectId(id) }
-            const updatedDoc = {
-                $set: {
-                    role: 'Tutor'
-                }
+
+            try {
+                const result = await userCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { role: 'Tutor' } }
+                );
+                res.send(result);
+            } catch (error) {
+                console.error('Error updating user to tutor:', error);
+                res.status(500).json({ error: 'Failed to update user role to tutor' });
             }
-            const result = await userCollection.updateOne(filter, updatedDoc)
-            res.send(result)
-        })
+        });
 
         // Set the user role to student
-
         app.patch('/users/student/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = { _id: new ObjectId(id) }
-            const updatedDoc = {
-                $set: {
-                    role: 'Student'
-                }
+
+            try {
+                const result = await userCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { role: 'Student' } }
+                );
+                res.send(result);
+            } catch (error) {
+                console.error('Error updating user to student:', error);
+                res.status(500).json({ error: 'Failed to update user role to student' });
             }
-            const result = await userCollection.updateOne(filter, updatedDoc)
-            res.send(result)
-        })
-
-        // delete a user
-
+        });
+        // Delete a user
         app.delete('/users/:id', async (req, res) => {
             const id = req.params.id;
-            const query = { _id: new ObjectId(id) }
-            const result = await userCollection.deleteOne(query);
-            res.send(result);
-        })
+            const query = { _id: new ObjectId(id) };
 
-        // get sessions data from db
-
-        app.get('/sessions', async (req, res) => {
-            const result = await sessionCollection.find().toArray();
-            res.send(result)
-
-        })
-
-        // post new sessions data in db
-        app.post('/sessions', async (req, res) => {
             try {
-                const session = req.body;
-                console.log(session);
+                const result = await userCollection.deleteOne(query);
+                res.send(result);
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                res.status(500).send({ message: 'Failed to delete user' });
+            }
+        });
+
+        // Get sessions data from db
+        app.get('/sessions', async (req, res) => {
+            try {
+                const result = await sessionCollection.find().toArray();
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching sessions:', error);
+                res.status(500).send({ message: 'Failed to fetch sessions' });
+            }
+        });
+
+        // Post new sessions data in db
+        app.post('/sessions', async (req, res) => {
+            const session = req.body;
+
+            try {
                 const result = await sessionCollection.insertOne(session);
                 res.status(201).send({ insertedId: result.insertedId });
             } catch (error) {
@@ -257,31 +259,35 @@ async function run() {
             }
         });
 
-        // get single sesssion from db using its _id
-
+        // Get single session from db using its _id
         app.get('/sessions/:id', async (req, res) => {
-            const id = req.params.id
-            const query = { _id: new ObjectId(id) }
-            const result = await sessionCollection.findOne(query)
-            res.send(result)
-        })
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
 
-        // get sessions data by tutor email
-
-        app.get('/session', async (req, res) => {
-            console.log(req.query.email);
-            let query = {};
-            if (req.query?.email) {
-                query = { email: req.query.email }
-
+            try {
+                const result = await sessionCollection.findOne(query);
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching session:', error);
+                res.status(500).send({ message: 'Failed to fetch session' });
             }
-            const result = await sessionCollection.find(query).toArray();
-            res.send(result);
-        })
+        });
 
+        // Get sessions data by tutor email
+        app.get('/session', async (req, res) => {
+            const { email } = req.query;
+            const query = email ? { email } : {};
 
-        // approve session by admin
+            try {
+                const result = await sessionCollection.find(query).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching sessions by tutor email:', error);
+                res.status(500).send({ message: 'Failed to fetch sessions' });
+            }
+        });
 
+        // Approve session by admin
         app.patch('/sessions/approve/:id', async (req, res) => {
             const id = req.params.id;
             const { fee } = req.body; // Assuming the fee is passed in the request body
@@ -297,10 +303,11 @@ async function run() {
                 const result = await sessionCollection.updateOne(filter, updatedFields);
                 res.send(result);
             } catch (error) {
-                // Handle error
-                res.status(500).send("Error occurred while updating session.");
+                console.error('Error approving session:', error);
+                res.status(500).send({ message: 'Failed to approve session' });
             }
         });
+
 
         // Edit Approved Session by Admin
 
@@ -335,162 +342,179 @@ async function run() {
 
 
         // Reject session by admin
-
         app.patch('/sessions/reject/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = { _id: new ObjectId(id) }
-            const updatedDoc = {
-                $set: {
-                    Status: 'Rejected'
-                }
+            const filter = { _id: new ObjectId(id) };
+            const update = { $set: { Status: 'Rejected' } };
+
+            try {
+                const result = await sessionCollection.updateOne(filter, update);
+                res.send(result);
+            } catch (error) {
+                console.error('Error rejecting session:', error);
+                res.status(500).send({ message: 'Failed to reject session' });
             }
-            const result = await sessionCollection.updateOne(filter, updatedDoc)
-            res.send(result)
-        })
+        });
 
-        // Delete Session by admin 
-
+        // Delete Session by admin
         app.delete('/sessions/:id', async (req, res) => {
             const id = req.params.id;
-            const query = { _id: new ObjectId(id) }
-            const result = await sessionCollection.deleteOne(query);
-            res.send(result);
-        })
+            const query = { _id: new ObjectId(id) };
 
+            try {
+                const result = await sessionCollection.deleteOne(query);
+                res.send(result);
+            } catch (error) {
+                console.error('Error deleting session:', error);
+                res.status(500).send({ message: 'Failed to delete session' });
+            }
+        });
 
         // Request to approve for rejected sessions
-
         app.patch('/sessions/pending/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = { _id: new ObjectId(id) }
-            const updatedDoc = {
-                $set: {
-                    Status: 'Pending'
-                }
+            const filter = { _id: new ObjectId(id) };
+            const update = { $set: { Status: 'Pending' } };
+
+            try {
+                const result = await sessionCollection.updateOne(filter, update);
+                res.send(result);
+            } catch (error) {
+                console.error('Error setting session to pending:', error);
+                res.status(500).send({ message: 'Failed to set session to pending' });
             }
-            const result = await sessionCollection.updateOne(filter, updatedDoc)
-            res.send(result)
-        })
+        });
 
-        // get approved data
-
+        // Get approved sessions data
         app.get('/session/approved', async (req, res) => {
-            let query = {};
-            if (req.query?.status) {
-                query = { Status: req.query.status }
+            const query = req.query?.status ? { Status: req.query.status } : {};
+
+            try {
+                const result = await sessionCollection.find(query).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching approved sessions:', error);
+                res.status(500).send({ message: 'Failed to fetch approved sessions' });
             }
-            const result = await sessionCollection.find(query).toArray();
-            res.send(result);
-        })
+        });
 
-        // post a session material
-
+        // Post a session material
         app.post('/materials', async (req, res) => {
             const material = req.body;
-            const result = await materialsCollection.insertOne(material)
-            res.send(result)
-        })
 
-        // get material by tutor
-
-        app.get('/materials', async (req, res) => {
-            console.log(req.query.email);
-            let query = {};
-            if (req.query?.email) {
-                query = { email: req.query.email }
-
-            }
-            const result = await materialsCollection.find(query).toArray();
-            res.send(result);
-        })
-
-        // get materials by id
-
-        app.get('/materials/:id', async (req, res) => {
-            const id = req.params.id
-            const query = { _id: new ObjectId(id) }
-            const result = await materialsCollection.findOne(query)
-            res.send(result)
-        })
-
-        // get all materials data from db
-
-        app.get('/materials', async (req, res) => {
-            const result = await materialsCollection.find().toArray()
-            res.send(result);
-        })
-
-        // update materials by id
-
-        app.patch('/materials/:id', async (req, res) => {
             try {
-                const id = req.params.id;
-                const query = { _id: new ObjectId(id) };
+                const result = await materialsCollection.insertOne(material);
+                res.send(result);
+            } catch (error) {
+                console.error('Error adding material:', error);
+                res.status(500).send({ message: 'Failed to add material' });
+            }
+        });
 
-                // Assuming req.body contains the updated fields
-                const updatedMaterial = req.body;
+        // Get materials by tutor email
+        app.get('/materials', async (req, res) => {
+            const query = req.query?.email ? { email: req.query.email } : {};
 
+            try {
+                const result = await materialsCollection.find(query).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching materials:', error);
+                res.status(500).send({ message: 'Failed to fetch materials' });
+            }
+        });
+
+        // Get material by id
+        app.get('/materials/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+
+            try {
+                const result = await materialsCollection.findOne(query);
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching material:', error);
+                res.status(500).send({ message: 'Failed to fetch material' });
+            }
+        });
+
+        // Get all materials data from db
+        app.get('/materials', async (req, res) => {
+            try {
+                const result = await materialsCollection.find().toArray();
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching all materials:', error);
+                res.status(500).send({ message: 'Failed to fetch materials' });
+            }
+        });
+
+        // Update material by id
+        app.patch('/materials/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const updatedMaterial = req.body;
+
+            try {
                 const result = await materialsCollection.updateOne(query, { $set: updatedMaterial });
-
                 if (result.matchedCount === 0) {
                     return res.status(404).json({ error: 'Material not found' });
                 }
-
-                res.json({ updatedId: id }); // Respond with the updated ID or any other success message
-
+                res.json({ updatedId: id });
             } catch (error) {
                 console.error('Error updating material:', error);
                 res.status(500).json({ error: 'Internal server error' });
             }
         });
 
-
-        // delete a material
-
+        // Delete a material
         app.delete('/materials/:id', async (req, res) => {
             const id = req.params.id;
-            const query = { _id: new ObjectId(id) }
-            const result = await materialsCollection.deleteOne(query);
-            res.send(result);
-        })
-
-        // Endpoint to search users by name or email
-
-        app.get('/users/search', async (req, res) => {
-            const { name, email } = req.query;
-            const userCollection = client.db('ThinkSyncDB').collection('users');
+            const query = { _id: new ObjectId(id) };
 
             try {
-                let query = {};
-                if (name) {
-                    query.name = { $regex: new RegExp(name, 'i') };
-                }
-                if (email) {
-                    query.email = { $regex: new RegExp(email, 'i') };
-                }
+                const result = await materialsCollection.deleteOne(query);
+                res.send(result);
+            } catch (error) {
+                console.error('Error deleting material:', error);
+                res.status(500).send({ message: 'Failed to delete material' });
+            }
+        });
 
+        // Endpoint to search users by name or email
+        app.get('/users/search', async (req, res) => {
+            const { name, email } = req.query;
+            const query = {};
+
+            if (name) query.name = { $regex: new RegExp(name, 'i') };
+            if (email) query.email = { $regex: new RegExp(email, 'i') };
+
+            try {
                 const users = await userCollection.find(query).toArray();
                 res.json(users);
-            } catch (err) {
-                console.error('Error searching users:', err);
+            } catch (error) {
+                console.error('Error searching users:', error);
                 res.status(500).json({ error: 'Internal server error' });
             }
         });
 
-        // personal notes post
+        // Post personal notes
         app.post('/note', async (req, res) => {
             const note = req.body;
-            const result = await noteCollection.insertOne(note)
-            res.send(result)
-        })
 
-        // get personal notes
-        app.get('/note/', async (req, res) => {
-            console.log(req.query.email);
-            let query = {};
-            if (req.query?.email) {
-                query = { email: req.query.email }
+            try {
+                const result = await noteCollection.insertOne(note);
+                res.send(result);
+            } catch (error) {
+                console.error('Error adding note:', error);
+                res.status(500).send({ message: 'Failed to add note' });
             }
+        });
+        // Get personal notes
+        app.get('/note/', async (req, res) => {
+            const { email } = req.query;
+            const query = email ? { email } : {};
+
             try {
                 const result = await noteCollection.find(query).toArray();
                 res.send(result);
@@ -500,10 +524,10 @@ async function run() {
             }
         });
 
-        // delete personal notes
-
+        // Delete personal notes
         app.delete('/note/:id', async (req, res) => {
             const id = req.params.id;
+
             try {
                 const result = await noteCollection.deleteOne({ _id: new ObjectId(id) });
                 if (result.deletedCount === 1) {
@@ -517,34 +541,32 @@ async function run() {
             }
         });
 
-        // update notes
+        // Update notes
         app.patch('/note/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const updatedNote = req.body;
+
             try {
-                const id = req.params.id;
-                const query = { _id: new ObjectId(id) };
-
-                // Assuming req.body contains the updated fields
-                const updatedNote = req.body;
-
                 const result = await noteCollection.updateOne(query, { $set: updatedNote });
 
                 if (result.matchedCount === 0) {
                     return res.status(404).json({ error: 'Note not found' });
                 }
 
-                res.json({ updatedId: id }); // Respond with the updated ID or any other success message
-
+                res.json({ updatedId: id });
             } catch (error) {
                 console.error('Error updating note:', error);
                 res.status(500).json({ error: 'Internal server error' });
             }
         });
 
+        // Get a single note by id
         app.get('/note/:id', async (req, res) => {
-            try {
-                const id = req.params.id;
-                const query = { _id: new ObjectId(id) };
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
 
+            try {
                 const note = await noteCollection.findOne(query);
 
                 if (!note) {
@@ -552,26 +574,35 @@ async function run() {
                 }
 
                 res.json(note);
-
             } catch (error) {
                 console.error('Error fetching note:', error);
                 res.status(500).json({ error: 'Internal server error' });
             }
         });
 
-        // post review api
-
+        // Post review
         app.post('/review', async (req, res) => {
-            const review = req.body
-            const result = await reviewCollection.insertOne(review)
-            res.send(result)
-        })
+            const review = req.body;
 
-        // get review api
+            try {
+                const result = await reviewCollection.insertOne(review);
+                res.send(result);
+            } catch (error) {
+                console.error('Error posting review:', error);
+                res.status(500).json({ error: 'Failed to post review' });
+            }
+        });
+
+        // Get reviews
         app.get('/review', async (req, res) => {
-            const result = await reviewCollection.find().toArray()
-            res.send(result)
-        })
+            try {
+                const result = await reviewCollection.find().toArray();
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching reviews:', error);
+                res.status(500).json({ error: 'Failed to fetch reviews' });
+            }
+        });
 
         // Payment route
         app.post('/create-payment-intent', async (req, res) => {
@@ -585,20 +616,17 @@ async function run() {
 
             try {
                 const paymentIntent = await stripe.paymentIntents.create({
-                    amount: amount,
+                    amount,
                     currency: "usd",
                     payment_method_types: ['card'],
                 });
 
-                res.json({
-                    clientSecret: paymentIntent.client_secret
-                });
+                res.json({ clientSecret: paymentIntent.client_secret });
             } catch (error) {
                 console.error("Error creating payment intent:", error);
                 res.status(500).json({ error: 'Failed to create payment intent' });
             }
         });
-
 
 
         // Send a ping to confirm a successful connection

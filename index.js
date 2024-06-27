@@ -11,13 +11,14 @@ const port = process.env.PORT || 8000;
 
 // Middleware configuration
 const corsOptions = {
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'https://thinksynccc.web.app'],
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'https://thinksynccc.web.app', 'https://thinksync.netlify.app'],
     credentials: true,
     optionSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
+
 
 // Verify Token Middleware
 const verifyToken = (req, res, next) => {
@@ -40,8 +41,11 @@ const verifyToken = (req, res, next) => {
 };
 
 
+
+
 // MongoDB connection URI
 const uri = `mongodb://${process.env.DB_USER}:${process.env.DB_PASS}@ac-esohqc9-shard-00-00.okia5sv.mongodb.net:27017,ac-esohqc9-shard-00-01.okia5sv.mongodb.net:27017,ac-esohqc9-shard-00-02.okia5sv.mongodb.net:27017/?ssl=true&replicaSet=atlas-mrsszx-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0`;
+
 const client = new MongoClient(uri, {
     serverApi: {
         version: ServerApiVersion.v1,
@@ -62,6 +66,8 @@ async function run() {
         const noteCollection = db.collection('notes');
         const reviewCollection = db.collection('review');
 
+
+
         // Auth related API
         app.post('/jwt', async (req, res) => {
             const user = req.body;
@@ -70,7 +76,6 @@ async function run() {
             });
             res.send({ success: true, token });
         });
-
 
         // Logout
         app.get('/logout', (req, res) => {
@@ -223,7 +228,8 @@ async function run() {
                 res.status(500).json({ error: 'Failed to update user role to student' });
             }
         });
-        // Delete a user
+
+        // Delete a user by 
         app.delete('/users/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
@@ -441,7 +447,7 @@ async function run() {
         });
 
         // Get all materials data from db
-        app.get('/materials', async (req, res) => {
+        app.get('/all-materials', async (req, res) => {
             try {
                 const result = await materialsCollection.find().toArray();
                 res.send(result);
@@ -643,6 +649,7 @@ async function run() {
         // Ensures that the client will close when you finish/error
     }
 }
+
 run().catch(console.dir)
 
 app.get('/', (req, res) => {

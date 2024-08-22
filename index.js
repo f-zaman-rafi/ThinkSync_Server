@@ -653,9 +653,9 @@ async function run() {
 run().catch(console.dir)
 
 app.get('/', (req, res) => {
-    res.send('Hello from studySync Server..')
+    res.send('Hello from thinkSync Server..')
 })
 
 app.listen(port, () => {
-    console.log(`studySync is running on port ${port}`)
+    console.log(`thinkSync is running on port ${port}`)
 })
